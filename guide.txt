@@ -1,0 +1,77 @@
+#1
+docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}"
+
+#2
+docker logs -f devex4-jenkins-1 --tail 200
+
+#3
+docker exec devex4-jenkins-1 cat /var/jenkins_home/secrets/initialAdminPassword
+
+TEST:
+
+
+A. Unlock Jenkins & finish first-time setup (UI)
+Open Jenkins in your browser: http://localhost:7777 (from your docker ps).
+On the Unlock page paste the initial admin password you already have:
+
+b786019665a24aaf9d3b46dce6529490
+
+Click Continue → Install suggested plugins → wait until plugins finish installing.
+When prompted, Create First Admin User:
+Full name: e.g. admin
+Username: admin
+Password: your chosen secure password
+Email: optional
+Click Save and Finish.
+Click Start using Jenkins to land on the dashboard.
+
+B. Install the “HTML Publisher” plugin
+UI method (easiest)
+On Jenkins dashboard → Manage Jenkins → Manage Plugins.
+Go to Available tab → search box type: HTML Publisher (or htmlpublisher).
+Check the plugin → click Install without restart (or Download now and install after restart).
+Wait until the install completes (you’ll see progress). If it says restart required, restart Jenkins (Manage Jenkins → Restart Safely).
+CLI / Docker method (non-UI, faster)
+
+If you prefer to install quickly from host shell:
+
+docker exec -it devex4-jenkins-1 jenkins-plugin-cli --plugins htmlpublisher
+# then restart Jenkins container (optional)
+docker restart devex4-jenkins-1
+(jenkins-plugin-cli is available in official Jenkins images. This installs htmlpublisher.)
+
+C. Create the Freestyle job: simple-html-site
+1 — Create job (UI)
+
+Jenkins dashboard → New Item.
+Enter simple-html-site as name.
+Select Freestyle project → OK.
+
+2 — Configure Build step
+
+In job configuration → Build section → Add build step → Execute shell (this is available because Jenkins master container runs Linux).
+Paste these commands into the shell text box exactly:
+mkdir -p site
+echo "<!doctype html><html><head><meta charset=\"utf-8\"><title>Simple HTML Site</title></head><body><h1>Welcome to Jenkins Static Site</h1></body></html>" > site/index.html
+
+
+Notes:
+mkdir -p site ensures the directory exists.
+The file site/index.html will be created in the job’s workspace (e.g., /var/jenkins_home/workspace/simple-html-site/site/index.html).
+
+3 — Configure Post-build action (Publish HTML report)
+
+In job config → Post-build Actions → Add post-build action → Publish HTML reports (this appears after installing HTML Publisher plugin).
+Set these fields:
+HTML directory to archive: site
+Index page[s]: index.html
+Report title: Simple HTML Site
+
+(Optional) Check Keep past HTML reports if you want history.
+Save the job.
+
+D. Build the job and view the HTML report
+
+On the job page (simple-html-site) click Build Now (left side).
+Click the build number in Build History (e.g., #1) → wait for the build to finish.
+On the left side of the build page you will see a link called Simple HTML Site (the report title). Click it and the static HTML page (Welcome to Jenkins Static Site) will render in your browser.
